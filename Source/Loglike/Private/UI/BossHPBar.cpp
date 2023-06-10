@@ -14,8 +14,14 @@ void UBossHPBar::NativeConstruct()
 	CurrentText = Cast<UTextBlock>(GetWidgetFromName(TEXT("CurrentHP")));
 	MaxText = Cast<UTextBlock>(GetWidgetFromName(TEXT("MaxHP")));
 
-	MaxText->SetText(FText::AsNumber(MaxNum));
-	CurrentText->SetText(FText::AsNumber(MaxNum));
+	if (MaxText != nullptr)
+	{
+		MaxText->SetText(FText::AsNumber(MaxNum));
+	}
+	if (CurrentText != nullptr)
+	{
+		CurrentText->SetText(FText::AsNumber(MaxNum));
+	}
 }
 
 void UBossHPBar::UpdateHPWidget(float CurrentNum)

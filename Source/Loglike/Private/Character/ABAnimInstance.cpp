@@ -103,7 +103,7 @@ void UABAnimInstance::PlayDodgeMontage()
 }
 
 //패링 몽타주 실행 함수
-void UABAnimInstance::PlayParryingMontage()
+void UABAnimInstance::PlayParryingMontage(float duration)
 {
 	if (!Montage_IsPlaying(ParryingMontage))
 	{

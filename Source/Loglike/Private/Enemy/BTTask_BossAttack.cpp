@@ -27,7 +27,7 @@ EBTNodeResult::Type UBTTask_BossAttack::ExecuteTask(UBehaviorTreeComponent& Owne
 	}
 
 	Boss->Attack();
-	Boss->AttackCount();
+	// Boss->AttackCount();
 
 	return EBTNodeResult::Succeeded;
 }

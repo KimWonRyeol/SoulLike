@@ -63,6 +63,15 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "Monster", Meta = (AllowPrivateAccess = true))
 	TArray<UBlueprint*> MonsterBlueprint;
 
-	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "MonsterClass", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<class AGhoul> GhoulClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "MonsterClass", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<class ALich> LichClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "MonsterClass", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<class AGoblin> GoblinClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "MonsterClass", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<class AZombie> ZombieClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = "MonsterClass", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<class AMeleeSkeleton> MeleeSkeletonClass;
 
 };

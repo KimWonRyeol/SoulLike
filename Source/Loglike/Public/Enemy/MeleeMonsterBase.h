@@ -27,6 +27,9 @@ public:
 	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	bool GetIsAttacking() { return IsAttacking; }
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    class UTextRenderComponent* TextRenderComponent;
 private:
 	int32 ComboNum;
 	bool IsAttacking;

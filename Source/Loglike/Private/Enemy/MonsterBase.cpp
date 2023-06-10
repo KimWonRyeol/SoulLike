@@ -5,7 +5,6 @@
 #include "Enemy/MonsterAnimBase.h"
 #include "Enemy/MonsterAIControllerBase.h"
 #include "Enemy/MeleeMonsterBase.h"
-
 #include "Enemy/Boss.h"
 
 #include "Character/LoglikeCharacter.h"
@@ -21,7 +20,7 @@
 #include "Particles/ParticleSystem.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
-
+#include "UI/DamageWidgetActor.h"
 
 // Sets default values
 AMonsterBase::AMonsterBase()
@@ -90,12 +89,17 @@ void AMonsterBase::Attack()
 float AMonsterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
 	float FinalDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
+	if(IsDead) return FinalDamage;
 	HealthPoint -= FinalDamage;
+
+	//DamageWidget
+	GenDamageWidget(FinalDamage);
+
 	//데미지가 0보다 작아지면 죽음
 	if (HealthPoint <= 0.f)
 	{
 		Dead();
+		return FinalDamage;
 	}
 
 	//blood particle 생성
@@ -103,23 +107,41 @@ float AMonsterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& Da
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitImpactP, GetActorLocation());
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Actor : %s took Damage : %f"), *GetName(), FinalDamage);
+	//UE_LOG(LogTemp, Warning, TEXT("Actor : %s took Damage : %f"), *GetName(), FinalDamage);
 	Cast<AMonsterAIControllerBase>(GetController())->SetPain(true, 10.f);
-	MonsterAnim->PlayPainMontage();
+	if (MonsterAnim != nullptr)
+	{
+		MonsterAnim->PlayPainMontage();
+	}
+
 	
 	return FinalDamage;
 }
 
 void AMonsterBase::Dead()
 {
+	if(IsDead) return;
 	//AI,Animation 죽음처리& Collision 비활성화
 	if (Cast<ADungeonGameMode>(UGameplayStatics::GetGameMode(GetWorld())) != nullptr)
 	{
 		Cast<ADungeonGameMode>(UGameplayStatics::GetGameMode(GetWorld()))->UpdateMonsterNum();
 	}
+
+	//몬스터 죽었을 때 몬스터 흡혈 무기 효과 발동을 위해 함수 실행
+	ALoglikeCharacter* PlayerCharacter = Cast<ALoglikeCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+	PlayerCharacter->DrainEnemyHP();
+
+	AMonsterAIControllerBase* AIControllerBase = Cast<AMonsterAIControllerBase>(GetController());
+	if(AIControllerBase)
+	{
+		AIControllerBase->SetDead();
+	}
+	//Cast<AMonsterAIControllerBase>(GetController())->SetDead();
+	if (MonsterAnim != nullptr)
+	{
+		MonsterAnim->SetDead();
+	}
 	
-	Cast<AMonsterAIControllerBase>(GetController())->SetDead();
-	MonsterAnim->SetDead();
 	SetActorEnableCollision(false);
 	IsDead = true;
 }
@@ -159,6 +181,8 @@ void AMonsterBase::OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, cla
 			{
 				Cast<ABoss>(this)->Stun();
 			}
+			//패링 성공 시 효과 적용을 위한 패링 성공을 알림
+			LoglikeCharacter->SuccessParrying();
 		}
 		else
 		{
@@ -169,4 +193,17 @@ void AMonsterBase::OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, cla
 		}
 		
 	}
+}
+
+void AMonsterBase::GenDamageWidget(float DamageValue)
+{
+	if(!GetWorld()) return;
+	FActorSpawnParameters spawnParams;
+	FRotator rotator = GetActorRotation();
+	FVector spawnLocation = GetActorLocation();
+ 
+	if (GetWorld() == nullptr) return;
+	ADamageWidgetActor* WidgetActor = GetWorld()->SpawnActor<ADamageWidgetActor>(DamageWidgetClass, spawnLocation, rotator, spawnParams);
+	if (WidgetActor == nullptr) return;
+	WidgetActor->SetDamageValue((int32)DamageValue);
 }

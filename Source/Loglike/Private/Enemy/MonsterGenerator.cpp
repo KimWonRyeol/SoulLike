@@ -44,7 +44,7 @@ AMonsterGenerator::AMonsterGenerator()
 	Group.MonsterNum = 4;
 	Group.MonsterType = EMonsterType::E_Zombie;
 	Groups3.MonsterGruop.Add(Group);
-	Group.MonsterNum = 2;
+	Group.MonsterNum = 1;
 	Group.MonsterType = EMonsterType::E_Lich;
 	Groups3.MonsterGruop.Add(Group);
 	MonsterGroups.Add(Groups3);
@@ -62,7 +62,7 @@ AMonsterGenerator::AMonsterGenerator()
 	MonsterGroups.Add(Groups4);
 
 	FMonsterGroups Groups5;
-	Group.MonsterNum = 5;
+	Group.MonsterNum = 3;
 	Group.MonsterType = EMonsterType::E_Lich;
 	Groups5.MonsterGruop.Add(Group);
 	MonsterGroups.Add(Groups5);
@@ -93,7 +93,7 @@ int32 AMonsterGenerator::GenMonsters(int8 MonsterGroupIndex)
 			FRotator SpawnRotator = MonsterLocationArr[n]->GetComponentRotation();
 			FVector  SpawnLocation = MonsterLocationArr[n]->GetComponentLocation();
 
-			switch (Group.MonsterType)
+			/*switch (Group.MonsterType)
 			{
 			case EMonsterType::E_Ghoul:
 				GetWorld()->SpawnActor<AGhoul>(MonsterBlueprint[0]->GeneratedClass, SpawnLocation, SpawnRotator, SpawnParams);
@@ -110,8 +110,26 @@ int32 AMonsterGenerator::GenMonsters(int8 MonsterGroupIndex)
 			case EMonsterType::E_Zombie:
 				GetWorld()->SpawnActor<AZombie>(MonsterBlueprint[4]->GeneratedClass, SpawnLocation, SpawnRotator, SpawnParams);
 				break;
-			}
+			}*/
 			
+			switch (Group.MonsterType)
+			{
+			case EMonsterType::E_Ghoul:
+				GetWorld()->SpawnActor<AGhoul>(GhoulClass, SpawnLocation, SpawnRotator, SpawnParams);
+				break;
+			case EMonsterType::E_Goblin:
+				GetWorld()->SpawnActor<AGoblin>(GoblinClass, SpawnLocation, SpawnRotator, SpawnParams);
+				break;
+			case EMonsterType::E_Lich:
+				GetWorld()->SpawnActor<ALich>(LichClass, SpawnLocation, SpawnRotator, SpawnParams);
+				break;
+			case EMonsterType::E_Skeleton:
+				GetWorld()->SpawnActor<AMeleeSkeleton>(MeleeSkeletonClass, SpawnLocation, SpawnRotator, SpawnParams);
+				break;
+			case EMonsterType::E_Zombie:
+				GetWorld()->SpawnActor<AZombie>(ZombieClass, SpawnLocation, SpawnRotator, SpawnParams);
+				break;
+			}
 
 		}
 		MonsterNum += Group.MonsterNum;

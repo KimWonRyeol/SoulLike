@@ -1,18 +1,17 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
 
 #include "Props/Door.h"
 #include "DungeonGameMode.h"
+#include "Character/LoglikeCharacter.h"
+#include "Character/ABCharacterStatComponent.h"
 #include "GameFramework/LoglikeGameInstance.h"
+#include "UI/DungeonClearWidget.h"
 #include "UI/StageNodeWidget.h"
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Kismet/GameplayStatics.h"
 
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "Props/Door.h"
-#include "Components/SphereComponent.h"
-#include "Components/TextRenderComponent.h"
 
 
 // Sets default values
@@ -32,6 +31,7 @@ ADoor::ADoor()
 	TextComponent->SetupAttachment(RootComponent);
 
 	IsStageClear = false;
+	IsEnableWidget = false;
 }
 
 void ADoor::PostInitializeComponents()
@@ -40,6 +40,7 @@ void ADoor::PostInitializeComponents()
 	TextComponent->SetVisibility(false);
 	SphereComponent->OnComponentBeginOverlap.AddDynamic(this, &ADoor::CharacterOverlapBegin);
 	SphereComponent->OnComponentEndOverlap.AddDynamic(this, &ADoor::CharacterOverlapEnd);
+
 }
 
 // Called when the game starts or when spawned
@@ -64,7 +65,6 @@ void ADoor::Tick(float DeltaTime)
 }
 void ADoor::CharacterOverlapBegin(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-
 	if (!IsStageClear) return;
 	TextComponent->SetVisibility(true);
 }
@@ -77,15 +77,33 @@ void ADoor::CharacterOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor
 void ADoor::ShowNextStageWidget()
 {
 	if (!IsStageClear) return;
+	
+	ULoglikeGameInstance* GameInstance = Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
 	//현재 스테이지가 보스 스테이지라면 다음 스테이지의 종류를 None으로 변경하고 선택된 스테이지를 초기화한 뒤 로비로 이동
-	if (Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->CurrentStageType == EStageType::E_Boss)
+	if (GameInstance->CurrentStageType == EStageType::E_Boss)
 	{
-		Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->CurrentStageType = EStageType::E_None;
-		Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->InitSelectedArr();
-		UGameplayStatics::OpenLevel(this, "Lobby");
+		if(IsEnableWidget) return;
+		IsEnableWidget = true;
+		ALoglikeCharacter* PlayerCharacter = Cast<ALoglikeCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(),0));
+		//Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->InitDungeonMode();
+		//Token
+		GameInstance->SetAddToken(10);
+		GameInstance->SetTotalAddToken(GameInstance->GetAddToken());
+		PlayerCharacter->CharacterToken = PlayerCharacter->CharacterStat->GetToken() + GameInstance->GetAddToken();
+		PlayerCharacter->SaveCharacter();
+		
+		//Clear Array
+		TPair<int32, int32> ClearPair;
+		ClearPair.Key = (int32)GameInstance->CurrentStageType;
+		ClearPair.Value = 10;
+		GameInstance->ClearStageArray.Add(ClearPair);
+		GameMode->EnableDungeonClearWidget();
+		
+		return;
+		//UGameplayStatics::OpenLevel(this, "Lobby");
 	}
 	//현재 스테이지가 보스 스테이지가 아니라면 다음 스테이지 선택을 위한 Widget을 보여줌
-	if (GameMode == nullptr) { return; }
+	if (GameMode == nullptr || GameMode->GetIsEnableNextStageWidget()) { return; }
 	GameMode->EnableNextStageWidget();
 }
 
@@ -94,6 +112,3 @@ void ADoor::OnStageClear()
 	UE_LOG(LogTemp, Warning, TEXT("------Stage Clear-----"));
 	IsStageClear = true;
 }
-	TextComponent -> SetVisibility(false);
-}
-

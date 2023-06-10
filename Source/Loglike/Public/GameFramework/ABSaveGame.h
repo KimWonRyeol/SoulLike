@@ -35,4 +35,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Stat")
 	int32 Token;
 
+	UPROPERTY(EditAnywhere, Category = "Stat")
+		bool WeaponKey;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+		bool ArtifactKey;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+	int32 WeaponKeyRemain;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+	int32 ArtifactKeyRemain;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+	int32 HpStatRemain;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+	int32 DamageStatRemain;
+	UPROPERTY(EditAnywhere, Category = "Stat")
+	int32 LuckStatRemain;
+
 };

@@ -11,7 +11,7 @@ AABPlayerState::AABPlayerState()
 {
 	//저장할 디폴트 데이터 선언할 것!!!!!!!!!!!!
 	MaxHealth = 100.0f;
-	DefaultDamage = 7.0f;
+	DefaultDamage = 0.0f;
 	DefaultLuck = 0.0f;
 	DefaultAttackSpeed = 1.0;
 	Token = 0;
@@ -54,7 +54,6 @@ void AABPlayerState::InitPlayerData()
 		ABSaveGame = GetMutableDefault<UABSaveGame>();
 
 	//SetCharacterLevel(1);
-	UE_LOG(LogTemp, Warning, TEXT("SSSSS : %f %f %f %f %d"), ABSaveGame->MaxHealth, ABSaveGame->DefaultDamage, ABSaveGame->DefaultLuck, ABSaveGame->DefaultAttackSpeed, ABSaveGame->Token);
 
 	MaxHealth = ABSaveGame->MaxHealth;
 	CharacterStat->SetMaxHealth(MaxHealth);
@@ -69,14 +68,12 @@ void AABPlayerState::InitPlayerData()
 	CharacterStat->SetDefaultAttackSpeed(DefaultAttackSpeed);
 
 	Token = ABSaveGame->Token;
-	CharacterStat->SetToken(Token);
-
-	SavePlayerData();
+	CharacterStat->SetDefaultToken(Token);
+	//SavePlayerData();
 }
 
 void AABPlayerState::SavePlayerData()
 {
-	//UABSaveGame* NewPlayerData = NewObject<UABSaveGame>();
 	UABSaveGame* NewPlayerData = Cast<UABSaveGame>(UGameplayStatics::CreateSaveGameObject(UABSaveGame::StaticClass()));
 
 	NewPlayerData->MaxHealth = CharacterStat->GetMaxHealth();
@@ -91,8 +88,8 @@ void AABPlayerState::SavePlayerData()
 	}
 }
 
-void AABPlayerState::SetCharacterLevel(int32 NewName)
-{
-	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
-	CurrentStatData = ABGameInstance->GetABCharacterData(NewName);
-}
+//void AABPlayerState::SetCharacterLevel(int32 NewName)
+//{
+//	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+//	CurrentStatData = ABGameInstance->GetABCharacterData(NewName);
+//}

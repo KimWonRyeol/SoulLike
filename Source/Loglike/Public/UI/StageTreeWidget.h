@@ -21,18 +21,31 @@ public:
 	void FadeAnimationPlay(bool IsIn);
 	void TransformStage(bool IsBossStage);
 
-public:
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "NextStage")
-	TArray<class UStageNodeWidget*> StageTree;
-	TArray<TTuple<int32, int32>> TreeConnection;
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "NextStage")
+	UFUNCTION()
+	void RemoveStageTreeWidget();
 
 public:
+	//Nodes
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "NextStage")
 	TArray<class UStageNodeWidget*> StageTree;
-	TArray<int32> TreeLoad;
 	TArray<TTuple<int32, int32>> TreeConnection;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "NextStage")
 	TMap<class UStageNodeWidget*, int32> NodeNumMap;
+
+	//Back Button
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "BackButton")
+	class UButton* BackButton;
+
+	//Animation
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
-		class UWidgetAnimation* Fade;
+	class UWidgetAnimation* FadeIn;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* FadeOut;
 	int32 NodeNum = 7;
+
+	//Sound
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sound")
+	class USoundBase* MySound;
+	//SelectNode
+	bool IsSelect;
 };

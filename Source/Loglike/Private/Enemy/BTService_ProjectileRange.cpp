@@ -7,10 +7,12 @@
 #include "Enemy/MonsterBase.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 UBTService_ProjectileRange::UBTService_ProjectileRange()
 {
 	NodeName = TEXT("Detect");
+	DetectRadius = 1000.0f;
 	Interval = 1.0f;
 }
 
@@ -23,7 +25,6 @@ void UBTService_ProjectileRange::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 
 	UWorld* World = ControllingPawn->GetWorld();
 	FVector Center = ControllingPawn->GetActorLocation();
-	float DetectRadius = 1000.0f;
 
 	if (nullptr == World) return;
 	TArray<FOverlapResult> OverlapResults;
@@ -44,6 +45,28 @@ void UBTService_ProjectileRange::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 			ALoglikeCharacter* Player = Cast<ALoglikeCharacter>(OverlapResult.GetActor());
 			if (Player && Player->GetController()->IsPlayerController())
 			{
+				FVector StartLoc = ControllingPawn->GetActorLocation();
+				FVector EndLoc = Player->GetActorLocation();
+				FHitResult HitResult;
+				TArray<AActor*> IgnoreActors;
+				IgnoreActors.Add(ControllingPawn);
+				IgnoreActors.Add(Player);
+				bool Result = UKismetSystemLibrary::LineTraceSingle(
+					GetWorld(),
+					StartLoc,
+					EndLoc,
+					UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic),
+					false,
+					IgnoreActors,
+					EDrawDebugTrace::None,
+					HitResult,
+					true
+					, FLinearColor::Red
+					, FLinearColor::Blue
+					, 5.0f
+				);
+
+				if (Result) { return; }
 				OwnerComp.GetBlackboardComponent()->SetValueAsObject(AMonsterAIControllerBase::TargetKey, Player);
 				/*DrawDebugSphere(World, Center, DetectRadius, 16, FColor::Yellow, false, 0.2f);
 

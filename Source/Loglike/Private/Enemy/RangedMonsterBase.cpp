@@ -20,8 +20,8 @@ void ARangedMonsterBase::Attack()
 	if (nullptr == MonsterAnim) return;
 	if (IsShooting) return;
 	
-	// 기절시 그냥 반환 eg(if(pain 몽타주가 발동중이 아니라면))
-	UE_LOG(LogTemp, Warning, TEXT("ARangedMonsterBase Attack Func Is Run"));
+	// 기절시 그냥 반환 eg(if(stun 몽타주가 발동중이 아니라면))
+	// UE_LOG(LogTemp, Warning, TEXT("ARangedMonsterBase Attack Func Is Run"));
 	MonsterAnim->PlayAttackMontage();
 	
 	IsShooting = true;

@@ -43,7 +43,6 @@ void ALich::AttackStart()
 			if (World != NULL)
 			{
 				World->SpawnActor<AProjectile>(Projectile, SpawnLocation, SpawnRotation);
-				
 			}
 		}
 	}

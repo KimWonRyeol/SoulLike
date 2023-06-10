@@ -74,9 +74,10 @@ public:
 	FOnJumpAttackEndDelegate JumpAttackIsEnded;
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget")
 	TSubclassOf<UUserWidget> BossHpWidgetClass;
 
-	UPROPERTY(VisibleAnywhere, Category = Widget)
+	UPROPERTY(EditAnywhere, Category = "Widget")
 	class UBossHPBar* BossHpWidget;
 
 private:
@@ -89,10 +90,10 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemies", Meta = (AllowPrivateAccess = true))
 	TArray<class AMonsterBase*> SpawnedEnemies;
 
-	float AttackDamageMin;
-	float AttackDamageMax;
-	float ChargedAttackDamage;
-	float JumpAttackDamage;
+	int32 AttackDamageMin;
+	int32 AttackDamageMax;
+	int32 ChargedAttackDamage;
+	int32 JumpAttackDamage;
 
 	int32 ComboNum;
 	int32 HitNum;

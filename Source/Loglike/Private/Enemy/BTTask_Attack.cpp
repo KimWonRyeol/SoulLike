@@ -5,6 +5,10 @@
 #include "Enemy/MeleeMonsterAIController.h"
 #include "Enemy/MeleeMonsterBase.h"
 
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BlackboardData.h"
+#include "BehaviorTree/BlackboardComponent.h"
+
 UBTTask_Attack::UBTTask_Attack()
 {
 	bNotifyTick = true;

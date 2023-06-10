@@ -52,10 +52,15 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimi
 {
 	if (OtherActor && Cast<ALoglikeCharacter>(OtherActor) && OtherComp)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: Lich Projectile Hit"), *(OtherActor->GetName()));
+		UE_LOG(LogTemp, Warning, TEXT("%s: Projectile Hit"), *(OtherActor->GetName()));
 		FDamageEvent DamageEvent;
 		OtherActor->TakeDamage(Damage, DamageEvent, GetController(), this);
 		Destroy();
 	}
+	else
+	{
+		Destroy();
+	}
+	return;
 }
 

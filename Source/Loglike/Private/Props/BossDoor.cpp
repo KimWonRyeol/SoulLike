@@ -106,7 +106,7 @@ void ABossDoor::Tick(float DeltaTime)
 					BossAI->SetEntranceKey(false);
 				}
 			}
-
+			
 		}
 
 		BossDoorL->SetRelativeRotation(RotationL);
@@ -132,15 +132,16 @@ void ABossDoor::CloseDoorCompBegineOverlap(class UPrimitiveComponent* Overlapped
 
 		if (Boss)
 		{
-
 			ABossAIController* BossAI = Cast<ABossAIController>(Boss->GetController());
 			if (BossAI)
 			{
 				Boss->SetHPbar();
 				BossAI->SetEntranceKey(true);
+				CloseDoor->SetCollisionProfileName(TEXT("NoCollision"));
 			}
 		}
 	}
+
 }
 
 

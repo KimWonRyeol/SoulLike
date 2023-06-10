@@ -21,14 +21,15 @@ AGoblin::AGoblin()
 	{
 		GetMesh()->SetAnimInstanceClass(ANIM.Class);
 	}
+
 	//BoxComponent
 	LeftBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftFistBox"));
 	RightBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightFistBox"));
-	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
-	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
+	
+	
 	LeftBox->SetCollisionProfileName(TEXT("OverlapAll"));
 	RightBox->SetCollisionProfileName(TEXT("OverlapAll"));
+
 	//init
 	HealthPoint = 20.f;
 	Damage = 3.f;
@@ -42,6 +43,10 @@ AGoblin::AGoblin()
 void AGoblin::BeginPlay()
 {
 	Super::BeginPlay();
+
+	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
+	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
+	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
 
 	LeftBox->OnComponentBeginOverlap.AddDynamic(this, &AMonsterBase::OnOverlapBegin);
 	RightBox->OnComponentBeginOverlap.AddDynamic(this, &AMonsterBase::OnOverlapBegin);

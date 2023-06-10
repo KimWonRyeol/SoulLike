@@ -27,11 +27,8 @@ AMeleeSkeleton::AMeleeSkeleton()
 	{
 		Sword->SetSkeletalMesh(SK_SWORD.Object);
 	}
-	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-	Sword->AttachToComponent(GetMesh(), AttachmentRules, "SKT_Sword");
-	OpacitySkeletalMesh.Add(Sword); //Sword를 OpacitySkeletalMesh에 추가
+
 	SwordCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("SwordCollision"));
-	SwordCollision->AttachToComponent(Sword, AttachmentRules, "SwordCol");
 	SwordCollision->SetCollisionProfileName(TEXT("OverlapAll"));
 
 	//init
@@ -48,6 +45,11 @@ void AMeleeSkeleton::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
+	Sword->AttachToComponent(GetMesh(), AttachmentRules, "SKT_Sword");
+	OpacitySkeletalMesh.Add(Sword); //Sword를 OpacitySkeletalMesh에 추가
+	SwordCollision->AttachToComponent(Sword, AttachmentRules, "SwordCol");
+
 	SwordCollision->OnComponentBeginOverlap.AddDynamic(this, &AMonsterBase::OnOverlapBegin);
 	AttackEnd();
 }

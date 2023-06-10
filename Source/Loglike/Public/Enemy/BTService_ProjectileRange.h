@@ -16,7 +16,8 @@ class LOGLIKE_API UBTService_ProjectileRange : public UBTService
 
 public:
 	UBTService_ProjectileRange();
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DetectRadius;
 protected:
 	virtual void TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 };

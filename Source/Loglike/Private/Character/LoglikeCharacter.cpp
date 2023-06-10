@@ -21,9 +21,12 @@
 #include "Character/ABWeapon.h"
 #include "Particles/ParticleSystem.h"
 #include "Props/Door.h"
+#include "UI/WeaponEffect.h"
+#include "UI/ArtifactEffect.h"
 #include "Character/ABCharacterStatComponent.h"
 #include "GameFramework/LoglikeGameInstance.h"
 #include "Character/ABPlayerState.h"
+#include "GameFramework/ABSaveGame.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -86,21 +89,22 @@ ALoglikeCharacter::ALoglikeCharacter()
 	//캐릭터 죽음 유무
 	IsDead = false;
 
+	//무기 변경 유무(소켓 때문에)
+	IsChangeWeapon = false;
+
 	// Tick 처리 가능 + 시작하자마자 Tick 처리를 원할 때
 	PrimaryActorTick.bCanEverTick = true;
 
 	//사용할 HP Bar HUD 클래스 객체 생성
-	static ConstructorHelpers::FClassFinder<UUserWidget> HealthBarObj(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/UI_HUD.UI_HUD_C'"));
-	HUDWidgetClass = HealthBarObj.Class;
+	/*static ConstructorHelpers::FClassFinder<UUserWidget> HealthBarObj(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/UI_HUD.UI_HUD_C'"));
+	HUDWidgetClass = HealthBarObj.Class;*/
 
 	//맞았을 때 파티클 효과 가져오기
 	static ConstructorHelpers::FObjectFinder<UParticleSystem> HitImpactParticle(TEXT("/Script/Engine.ParticleSystem'/Game/UndeadPack/Blood/FX/P_HitImpact_2.P_HitImpact_2'"));
 	if (HitImpactParticle.Succeeded())
 		HitImpactP = HitImpactParticle.Object;
 
-	AssetIndex = 4;
-	//SetActorHiddenInGame(true);
-
+	CurrentCheat = false;
 }
 
 
@@ -108,12 +112,9 @@ void ALoglikeCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
-
 	auto CurWeapon = GetWorld()->SpawnActor<AABWeapon>(FVector::ZeroVector, FRotator::ZeroRotator);
+	
 	SetWeapon(CurWeapon);
-
-	//캐릭터의 상태 변경
-	//SetCharacterState(ECharacterState::LOADING);
 
 	//생성한 위젯 클래스 객체 확인
 	if (HUDWidgetClass != nullptr)
@@ -156,12 +157,12 @@ void ALoglikeCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 		//Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ALoglikeCharacter::Look);
 
-		EnhancedInputComponent->BindAction(InteractDoorActon, ETriggerEvent::Triggered, this, &ALoglikeCharacter::DetectDoor);
 	}
 
 	PlayerInputComponent->BindAction(TEXT("Attack"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::Attack);
 	PlayerInputComponent->BindAction(TEXT("Dodge"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::Dodge);
 	PlayerInputComponent->BindAction(TEXT("Parrying"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::Parrying);
+	PlayerInputComponent->BindAction(TEXT("CheatMode"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::ChangeCheatMode);
 	//PlayerInputComponent->BindAction(TEXT("Inventory"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::Inventory);
 	//PlayerInputComponent->BindAction(TEXT("Interact"), EInputEvent::IE_Pressed, this, &ALoglikeCharacter::Interact);
 }
@@ -231,19 +232,67 @@ void ALoglikeCharacter::PostInitializeComponents()
 			ABAnim->JumpToAttackMontageSection(CurrentCombo);
 		}
 	});
-	ABAnim->OnAttackHitCheck.AddUObject(this, &ALoglikeCharacter::AttackCheck);
 
-	//캐릭터 현재 체력 세팅(스텟 컴포넌트에서 가져옴)
-	CurrentHealth = CharacterStat->GetMaxHealth();
-	//캐릭터 공격력 세팅(스텟 컴포넌트에서 가져옴)
-	CharacterDamage = CharacterStat->GetDamage();
-	//캐릭터 행운 세팅(스텟 컴포넌트에서 가져옴)
-	CharacterLuck = CharacterStat->GetLuck();
-	//캐릭터 토큰 세팅(스텟 컴포넌트에서 가져옴)
-	CharacterToken = CharacterStat->GetToken();
+	ABAnim->OnAttackHitCheck.AddUObject(this, &ALoglikeCharacter::ToggleAttackMode);
+
+	//세이브 데이터 로드 (스탯 컴포넌트에서 최신 데이터를 가져오지 못해서 여기서 로드했음.... 나중에 고칠 예정)
+	UABSaveGame* ABSaveGame = Cast<UABSaveGame>(UGameplayStatics::CreateSaveGameObject(UABSaveGame::StaticClass()));
+	ABSaveGame = Cast<UABSaveGame>(UGameplayStatics::LoadGameFromSlot("Player1", 0));
+	if (nullptr == ABSaveGame)
+	{
+		CharacterStat->SetMaxHealth(0.0f);
+		CharacterStat->SetDefaultDamage(0.0f);
+		CharacterStat->SetDefaultLuck(0.0f);
+		CharacterStat->SetDefaultToken(0);
+		CharacterStat->SetWeaponKey(false);
+		CharacterStat->SetArtifactKey(false);
+		CharacterStat->SetArtifactKeyRemain(1);
+		CharacterStat->SetWeaponKeyRemain(1);
+		CharacterStat->SetHpStatRemain(10);
+		CharacterStat->SetLuckStatRemain(10);
+		CharacterStat->SetDamageStatRemain(10);
+	}
+	else 
+	{
+		CharacterStat->SetMaxHealth(ABSaveGame->MaxHealth);
+		CharacterStat->SetDefaultDamage(ABSaveGame->DefaultDamage);
+		CharacterStat->SetDefaultLuck(ABSaveGame->DefaultLuck);
+		CharacterStat->SetDefaultToken(ABSaveGame->Token);
+		CharacterStat->SetWeaponKey(ABSaveGame->WeaponKey);
+		CharacterStat->SetArtifactKey(ABSaveGame->ArtifactKey);
+		CharacterStat->SetArtifactKeyRemain(ABSaveGame->ArtifactKeyRemain);
+		CharacterStat->SetWeaponKeyRemain(ABSaveGame->WeaponKeyRemain);
+		CharacterStat->SetHpStatRemain(ABSaveGame->HpStatRemain);
+		CharacterStat->SetLuckStatRemain(ABSaveGame->LuckStatRemain);
+		CharacterStat->SetDamageStatRemain(ABSaveGame->DamageStatRemain);
+	}
+
+	//게임 인스턴스 객체 생성
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+	if (ABGameInstance == nullptr) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ErrorErrorErrorErrorErrorError"));
+	}
+	else
+	{
+		
+
+		//Ruined Crown 장착했을 때의 효과(스테이지 이동시 체력 회복)
+		if (ArtifactEffect.Recovery == true)
+		{
+			ABGameInstance->SetCurrentHealth(ABGameInstance->ArtifactEffect_Recovery);
+			//CurrentHealth = ABGameInstance->GetCurrentHealth();
+		}
+
+		//다른 곳에서 스탯 변화를 주고 HUD에 보이도록 업데이트 해주는 함수
+		SetUpdateStat();
+
+		//추가 토큰 수 변수 초기화
+		ABGameInstance->SetAddToken(-ABGameInstance->GetAddToken());
+	}
 }
 
-//캐릭터 스테이스 상태 설정 함수
+//캐릭터 스테이스 상태 설정 함수 (필요 없을려나...)
 void ALoglikeCharacter::SetCharacterState(ECharacterState NewState)
 {
 	CurrentState = NewState;
@@ -288,6 +337,8 @@ void ALoglikeCharacter::Attack()
 		ABAnim->JumpToAttackMontageSection(CurrentCombo);
 		IsAttacking = true;
 	}
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+	UE_LOG(LogTemp, Warning, TEXT("Character Damage : %f"), CharacterDamage);
 }
 
 //공격 몽타주 끝 체크 함수
@@ -339,8 +390,14 @@ void ALoglikeCharacter::OnDodgeMontageEnded(UAnimMontage* Montage, bool bInterru
 //패링 애님 실행 함수
 void ALoglikeCharacter::Parrying()
 {
+	//기본 패링 시간
+	float parryingduration = 1.0f;
+
 	if (!IsParrying && !ParryingDelay) {
-		ABAnim->PlayParryingMontage();
+		//패링 시간을 늘려주는 무기를 가지면 패링시간 증가
+		if (WeaponEffect.ParryingDuration) parryingduration += 1;
+
+		ABAnim->PlayParryingMontage(parryingduration);
 		IsParrying = true;
 		ParryingDelay = true;
 		GetWorld()->GetTimerManager().SetTimer(Parrying_Timer, this, &ALoglikeCharacter::Delay2, 2.0f, false); // ������
@@ -353,40 +410,25 @@ void ALoglikeCharacter::Delay2()
 	ParryingDelay = false;
 }
 
-void ALoglikeCharacter::DetectDoor()
+void ALoglikeCharacter::SuccessParrying()
 {
-	FVector StartLoc = GetActorLocation();
-	FVector EndLoc = StartLoc + GetActorForwardVector() * 1000.f;
-	FHitResult HitResult;
-	TArray<AActor*> IgnoreActors;
-	bool Result = UKismetSystemLibrary::LineTraceSingle(
-		GetWorld(),
-		StartLoc,
-		EndLoc,
-		UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_Visibility),
-		false,
-		IgnoreActors,
-		EDrawDebugTrace::None,
-		HitResult,
-		true
-		, FLinearColor::Red
-		, FLinearColor::Blue
-		, 5.0f
-	);
-	if (Result)
-	{
-		ADoor* Gate = Cast<ADoor>(HitResult.GetActor());
-		if (::IsValid(Gate))
-		{
-			Gate->ShowNextStageWidget();
-		}
-	}
+	isParrySuccessful = true;
+}
+
+void ALoglikeCharacter::DrainEnemyHP()
+{
+	if (WeaponEffect.Leech == false) return;
+
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+	ABGameInstance->SetCurrentHealth(2);
+	SetUpdateStat();
 }
 
 bool ALoglikeCharacter::GetIsParrying()
 {
 	return IsParrying;
 }
+
 
 //패링 몽타주 끝 체크 함수
 void ALoglikeCharacter::OnParryingMontageEnded(UAnimMontage* Montage, bool bInterrupted)
@@ -398,6 +440,8 @@ void ALoglikeCharacter::OnParryingMontageEnded(UAnimMontage* Montage, bool bInte
 void ALoglikeCharacter::AttackCheck()
 {
 	FHitResult HitResult;
+	ActorsToIgnore.Add(this);
+
 	FCollisionQueryParams Params(NAME_None, false, this);
 	bool bResult = GetWorld()->SweepSingleByChannel(
 		HitResult,
@@ -408,7 +452,7 @@ void ALoglikeCharacter::AttackCheck()
 		FCollisionShape::MakeSphere(AttackRadius),
 		Params
 	);
-
+	
 #if ENABLE_DRAW_DEBUG
 
 	FVector TraceVec = GetActorForwardVector() * AttackRange;
@@ -435,12 +479,112 @@ void ALoglikeCharacter::AttackCheck()
 	//콜리전에 들어갔는지 체크
 	if (bResult)
 	{
+		float finalDamage = CharacterDamage;
 		if (HitResult.GetActor()->IsValidLowLevel())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Hit Actor Name : %s"), *HitResult.GetActor()->GetName());
-			//데미지를 캐릭터에 적용시키는 함수 실행(기본 함수)
-			UGameplayStatics::ApplyDamage(HitResult.GetActor(), CharacterDamage, GetController(), this, UDamageType::StaticClass());
+			//마지막 콤보 공격시 2배 데미지를 주는 무기를 가지고 있을시
+			if (WeaponEffect.FinalCombo)
+			{
+				if (CurrentCombo == 3) finalDamage = CharacterDamage * 2;
+			}
+			//패링 성공시 다음 공격을 2배 데미지 주는 무기를 가지고 있을시
+			else if (WeaponEffect.ParryingAtk)
+			{
+				if (isParrySuccessful) finalDamage = CharacterDamage * 2;
+				isParrySuccessful = false;
+			}
+
+			if (CurrentCheat)
+			{
+				finalDamage = CharacterDamage * 1000.f;
+			}
+			
+			//데미지를 캐릭터에 적용시키는 함수 실행(기본 함수)	
+			UE_LOG(LogTemp, Warning, TEXT("Hit Actor Name : %s %f"), *HitResult.GetActor()->GetName(), finalDamage);
+			UGameplayStatics::ApplyDamage(HitResult.GetActor(), finalDamage, GetController(), this, UDamageType::StaticClass());
 		}
+	}
+}
+
+void ALoglikeCharacter::MultiAttackCheck()
+{
+	TArray<FHitResult> HitResults;
+	ActorsToIgnore.Add(this);
+
+	FVector StartLocation = GetActorLocation();
+	FVector EndLocation = GetActorLocation();
+
+	TArray<AActor*> IgnoreActors;
+	IgnoreActors.Add(this);
+
+	bool bResult = UKismetSystemLibrary::SphereTraceMulti(
+		GetWorld(),
+		StartLocation,
+		EndLocation,
+		10000.f,
+		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel3),
+		false,
+		IgnoreActors,
+		EDrawDebugTrace::ForDuration,
+		HitResults,
+		true
+	);
+
+	if (bResult)
+	{
+		float FinalDamage = CharacterDamage;
+
+		if (WeaponEffect.FinalCombo && CurrentCombo == 3)
+		{
+			FinalDamage *= 2.0f;
+		}
+		else if (WeaponEffect.ParryingAtk && isParrySuccessful)
+		{
+			FinalDamage *= 2.0f;
+			isParrySuccessful = false;
+		}
+
+		if (CurrentCheat)
+		{
+			FinalDamage *= 1000.0f;
+		}
+
+		for (auto HitResult : HitResults)
+		{
+			if (HitResult.GetActor() && HitResult.GetActor()->IsValidLowLevel())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Hit Actor Name: %s %f"), *HitResult.GetActor()->GetName(), FinalDamage);
+				UGameplayStatics::ApplyDamage(HitResult.GetActor(), FinalDamage, GetController(), this, UDamageType::StaticClass());
+			}
+		}
+	}
+}
+
+
+//캐릭터 데이터 저장 함수
+void ALoglikeCharacter::SaveCharacter()
+{
+	//게임 인스턴스 객체 생성
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+
+	UABSaveGame* ABSaveGame = Cast<UABSaveGame>(UGameplayStatics::CreateSaveGameObject(UABSaveGame::StaticClass()));
+
+	ABSaveGame->MaxHealth = CharacterStat->GetMaxHealth();
+	ABSaveGame->DefaultDamage = CharacterStat->GetDefaultDamage();
+	ABSaveGame->DefaultLuck = CharacterStat->GetDefaultLuck();
+	ABSaveGame->DefaultAttackSpeed = CharacterStat->GetDefaultAttackSpeed();
+	ABSaveGame->Token = CharacterToken;
+	ABSaveGame->ArtifactKey = CharacterStat->GetArtifactKey();
+	ABSaveGame->WeaponKey = CharacterStat->GetWeaponKey();
+	ABSaveGame->ArtifactKeyRemain = CharacterStat->GetArtifactKeyRemain();
+	ABSaveGame->WeaponKeyRemain = CharacterStat->GetWeaponKeyRemain();
+	ABSaveGame->HpStatRemain = CharacterStat->GetHpStatRemain();
+	ABSaveGame->DamageStatRemain= CharacterStat->GetDamageStatRemain();
+	ABSaveGame->LuckStatRemain= CharacterStat->GetLuckStatRemain();
+
+	if (!UGameplayStatics::SaveGameToSlot(ABSaveGame, "Player1", 0))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Savefile Load Error!!!!"));
 	}
 }
 
@@ -450,47 +594,50 @@ float ALoglikeCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	//최종 계산된 데미지를 담을 변수
 	float FinalDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	UE_LOG(LogTemp, Warning, TEXT("Actor : %s took Damage : %f"), *GetName(), FinalDamage);
-	
+
+	//게임 인스턴스 객체 생성
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+
 	//구르기 중일 때는 피해x
-	if(!IsDodge || !IsParrying)
+	if (IsDodge == false && IsParrying == false) 
+	{
 		CurrentHealth -= FinalDamage;
+		if (CurrentHealth < 0) CurrentHealth = 0;
+		ABGameInstance->SetCurrentHealth(-FinalDamage);
+
+		//HUD에 피격시 효과 실행
+		CurrentWidget->PlayWidgetAnimationByName();
+
+		//blood particle 생성
+		if (HitImpactP != nullptr)
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitImpactP, GetActorLocation());
+	}
 
 	//델리게이트에 바인딩된 함수를 호출
 	//OnHPChanged.Broadcast();
 
-	//blood particle 생성
-	if (HitImpactP != nullptr)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitImpactP, GetActorLocation());
-	}
-
-	//나중에 지울 것!!!
-	//============================================
-	CharacterStat->SetAddDamage(2.0);
-	CharacterDamage = CharacterStat->GetDamage();
-
-	CharacterStat->SetAddLuck(0.3);
-	CharacterLuck = CharacterStat->GetLuck();
-
-	CharacterStat->SetToken(2);
-	CharacterToken = CharacterStat->GetToken();
-	//============================================
-
+	UE_LOG(LogTemp, Warning, TEXT("Character Max Health : %f "), MaxHealth);
 	UE_LOG(LogTemp, Warning, TEXT("Character Current Health : %f "), CurrentHealth);
 	if (CurrentHealth <= 0.0f)
 	{
+		this->DisableInput(Cast<APlayerController>(GetController()));	//죽으면 입력 비활성화
 		ABAnim->SetDeadAnim();//죽는 애니메이션 실행하도록 함수
 		SetActorEnableCollision(false); //죽을 때는 콜리전 해제
 		IsDead = true;
+
+		FTimerHandle GravityTimerHandle;
+		float GravityTime = 3.0f;
+
+		GetWorld()->GetTimerManager().SetTimer(GravityTimerHandle, FTimerDelegate::CreateLambda([&]()
+		{
+			UGameplayStatics::OpenLevel(GetWorld(), TEXT("Lobby"));
+
+			// TimerHandle 초기화
+			GetWorld()->GetTimerManager().ClearTimer(GravityTimerHandle);
+		}), GravityTime, false);
 	}
 	return FinalDamage;
 }
-
-////HUD에서의 HP Bar 비율을 계산하여 반환하는 함수
-//float ALoglikeCharacter::GetHPRatio()
-//{
-//	return (CurrentHealth < KINDA_SMALL_NUMBER ? 0.0f : (CurrentHealth / CharacterStat->GetMaxHealth()));
-//}
 
 //무기 장착이 가능한지를 반환하는 함수
 bool ALoglikeCharacter::CanSetWeapon()
@@ -501,32 +648,193 @@ bool ALoglikeCharacter::CanSetWeapon()
 void ALoglikeCharacter::SetWeapon(AABWeapon* NewWeapon)
 {
 	//무기 소켓 장착
-	FName WeaponSocket(TEXT("RightHand_Weapon"));
+	//게임 인스턴스에서 현재 착용하고 있는 무기가 기본 무기인지 이름을 통해서 소켓 구분
+	if (IsChangeWeapon == false)
+	{
+		WeaponSocket = FName(TEXT("RightHand_Weapon"));
+	}
+	else
+	{
+		WeaponSocket = FName(TEXT("RightHand_Weapon0"));
+	}
+	
 	if (nullptr != NewWeapon)
 	{
 		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponSocket);
+		NewWeapon->SetOwner(this);
 		CurrentWeapon = NewWeapon;
 	}
 }
 
-//블루프린트에서 현재 체력을 가져갈 때 사용할 함수(비율을 반환)
-float ALoglikeCharacter::GetHealth()
+//블루프린트에서 체력 비율을 가져갈 때 사용할 함수
+float ALoglikeCharacter::GetHealthRatio()
 {
-	return (CurrentHealth < KINDA_SMALL_NUMBER ? 0.0f : (CurrentHealth / CharacterStat->GetMaxHealth()));
+	//게임 인스턴스 객체 생성
+	/*auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());*/
+
+	return (CurrentHealth < KINDA_SMALL_NUMBER ? 0.0f : (CurrentHealth / MaxHealth));
 }
 
-//블루프린트에서 캐릭터의 공격력을 가져갈 때 사용할 함수
+//블루프린트에서 캐릭터의 체력 스탯을 가져갈 때 사용할 함수
+float ALoglikeCharacter::GetCharacterHealth()
+{
+	return HealthStat;
+}
+
+//블루프린트에서 캐릭터의 공격력 스탯을 가져갈 때 사용할 함수
 float ALoglikeCharacter::GetCharacterDamage()
 {
-	return CharacterDamage;
+	return DamageStat;
 }
 
+//블루프린트에서 캐릭터의 행운 스탯을 가져갈 때 사용할 함수
 float ALoglikeCharacter::GetCharacterLuck()
 {
 	return CharacterLuck;
 }
 
+//블루프린트에서 캐릭터의 토큰을 가져갈 때 사용할 함수
 int ALoglikeCharacter::GetCharacterToken()
 {
 	return CharacterToken;
+}
+
+float ALoglikeCharacter::GetCharacterMaxHealth()
+{
+	return MaxHealth;
+}
+
+float ALoglikeCharacter::GetCharacterCurrentHealth()
+{
+	return CurrentHealth;
+}
+
+//다른 곳에서 스탯 변화를 주고 HUD에 보이도록 업데이트 해주는 함수
+void ALoglikeCharacter::SetUpdateStat()
+{
+	//게임 인스턴스 객체 생성
+	auto ABGameInstance = Cast<ULoglikeGameInstance>(GetGameInstance());
+
+	//무기 효과를 가져옴 
+	WeaponEffect = ABGameInstance->GetWeaponEffect();
+
+	//아티팩트 효과를 가져옴
+	ArtifactEffect = ABGameInstance->GetArtifactEffect();
+
+	//캐릭터 체력 스탯 설정
+	HealthStat = CharacterStat->GetMaxHealth() + ABGameInstance->GetAddHealth();
+
+	//Gem Of HP 장착했을 때의 효과(HP 스탯 증가)
+	if (ArtifactEffect.Stat_UP_HP == true)
+	{
+		HealthStat += ABGameInstance->ArtifactEffect_Stat_HP;
+	}
+
+	//캐릭터 최대 체력 세팅
+	MaxHealth = 100.0f + HealthStat * 5;
+
+	//Ruby Amulet 장착했을 때의 효과(HP 증가)
+	if (ArtifactEffect.HP_UP == true)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("222222"));
+		MaxHealth += ABGameInstance->ArtifactEffect_MaxHealth;
+	}
+
+	//GlassCannon 무기를 가질 때 최대체력의 90% 감소
+	if (WeaponEffect.GlassCannon) MaxHealth *= 0.1;
+
+	ABGameInstance->SetMaxHealth(100.0f + HealthStat * 5);
+	
+	//캐릭터 현재 체력 세팅
+	CurrentHealth = ABGameInstance->GetCurrentHealth() + ABGameInstance->ArtifactEffect_MaxHealth;
+
+
+	//Gem Of HP 장착했을 때의 효과(HP 스탯 증가)
+	if (ArtifactEffect.Stat_UP_HP == true)
+	{
+		CurrentHealth += ABGameInstance->ArtifactEffect_Stat_HP * 5;
+	}
+
+	//GlassCannon 무기를 가질 때 현재체력을 최대체력에 맞게 Clamp
+	if (WeaponEffect.GlassCannon)
+	{
+		if (CurrentHealth > MaxHealth) CurrentHealth = MaxHealth;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("EEEEEEEEEE : %f %f"), CurrentHealth, MaxHealth);
+	UE_LOG(LogTemp, Warning, TEXT("QQQQQQQQQQ : %f %f"), ABGameInstance->GetCurrentHealth(), ABGameInstance->MaxHealth);
+
+	//캐릭터 공격력 세팅 (기본무기 공격력 7 + 스탯 공격력)
+	DamageStat = CharacterStat->GetDefaultDamage() + ABGameInstance->GetAddDamage();
+
+	//Gem Of ATK 장착했을 때의 효과(공격력 스탯 증가)
+	if (ArtifactEffect.Stat_UP_Atk == true)
+	{
+		DamageStat += ABGameInstance->ArtifactEffect_Stat_Damage;
+	}
+
+	//GlassCannon 무기를 가질 때 공격력 스탯 20 상승
+	if(WeaponEffect.GlassCannon) DamageStat += 20;
+
+	CharacterDamage = ABGameInstance->GetWeaponDamage() + DamageStat * 4;
+
+	//Rage Helm 장착했을 때의 효과(Damage 증가)
+	if (ArtifactEffect.Damage_UP == true)
+	{
+		if (CharacterDamage * ABGameInstance->ArtifactEffect_Damage < 1.0)
+			CharacterDamage += 1.0;
+		else
+			CharacterDamage = 1.0 + CharacterDamage + CharacterDamage * ABGameInstance->ArtifactEffect_Damage;
+	}
+
+	//캐릭터 행운 세팅
+	CharacterLuck = CharacterStat->GetDefaultLuck() + ABGameInstance->GetAddLuck();
+
+	//Gem Of LUK 장착했을 때의 효과(행운 스탯 증가)
+	if (ArtifactEffect.Stat_UP_Luck == true)
+	{
+		CharacterLuck += ABGameInstance->ArtifactEffect_Stat_Luck;
+	}
+
+	//캐릭터 토큰 세팅
+	CharacterToken = CharacterStat->GetToken();
+
+	//ABGameInstance->SetCurrentHealth(CurrentHealth);
+
+	SaveCharacter();
+}
+
+bool ALoglikeCharacter::GetWeaponKey()
+{
+	return CharacterStat->GetWeaponKey();
+}
+
+bool ALoglikeCharacter::GetArtifactKey()
+{
+	return CharacterStat->GetArtifactKey();
+}
+
+void ALoglikeCharacter::ChangeCheatMode()
+{
+	if (!CurrentCheat)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Now Is Not Cheat Mode. => Change!"));
+		CurrentCheat = true;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Now Is Cheat Mode!!  ChangeTT"));
+		CurrentCheat = false;
+	}
+}
+
+void ALoglikeCharacter::ToggleAttackMode()
+{
+	if (CurrentCheat)
+	{
+		MultiAttackCheck();
+	}
+	else
+	{
+		AttackCheck();
+	}
 }

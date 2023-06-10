@@ -35,18 +35,16 @@ ABoss::ABoss()
 		GetMesh()->SetAnimInstanceClass(AB_BOSS.Class);
 	}
 
-	static ConstructorHelpers::FClassFinder<UUserWidget> HPBAR(TEXT("/Game/ParagonRampage/Blueprints/UI_BossHPBar.UI_BossHPBar_C"));
+	/*static ConstructorHelpers::FClassFinder<UUserWidget> HPBAR(TEXT("/Game/ParagonRampage/Blueprints/UI_BossHPBar.UI_BossHPBar_C"));
 	if (HPBAR.Succeeded())
 	{
 		BossHpWidgetClass = HPBAR.Class;
-	}
+	}*/
 
 	//BoxComponent
 	LeftBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftFistBox"));
 	RightBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightFistBox"));
-	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
-	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
+	
 	LeftBox->SetCollisionProfileName(TEXT("OverlapAll"));
 	RightBox->SetCollisionProfileName(TEXT("OverlapAll"));
 
@@ -58,10 +56,10 @@ ABoss::ABoss()
 	//Combo Attack
 	ComboNum = 0;
 	//Damage
-	ChargedAttackDamage = 10.f;
-	JumpAttackDamage = 10.f;
-	AttackDamageMin = 3.f;
-	AttackDamageMax = 5.f;
+	ChargedAttackDamage = 10;
+	JumpAttackDamage = 10;
+	AttackDamageMin = 3;
+	AttackDamageMax = 5;
 	IsAttacking = false;
 
 
@@ -74,11 +72,17 @@ void ABoss::PostInitializeComponents()
 	Super::PostInitializeComponents();
 	//Anim
 	MonsterAnim->OnMontageEnded.AddDynamic(this, &ABoss::OnMontageEnded);
+
+
 }
 
 void ABoss::BeginPlay()
 {
 	Super::BeginPlay();
+
+	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
+	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
+	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
 
 	CheckHP = HealthPoint;
 
@@ -89,7 +93,7 @@ void ABoss::BeginPlay()
 
 	// Attack Test
 	// JumpAttack();
-	//RangedAttack();
+	// RangedAttack();
 	// Attack();
 }
 
@@ -97,13 +101,16 @@ void ABoss::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UE_LOG(LogTemp, Warning, TEXT("Boss Actor : %s HP : %f"), *GetName(), HealthPoint);
+	// UE_LOG(LogTemp, Warning, TEXT("Boss Actor : %s HP : %f"), *GetName(), HealthPoint);
 
 	if (HealthPoint <= 0)
 	{
-		BossHpWidget->RemoveFromViewport();
+		if (BossHpWidget != nullptr)
+		{
+			BossHpWidget->RemoveFromViewport();
+		}
 	}
-	if (HealthPoint < CheckHP)
+	else if (HealthPoint < CheckHP)
 	{
 		CheckHitPoint();
 		BossHpWidget->UpdateHPWidget(HealthPoint);
@@ -159,6 +166,7 @@ void ABoss::Attack()
 
 	Damage = FMath::RandRange(AttackDamageMin, AttackDamageMax);
 	Cast<UBossAnimInstance>(MonsterAnim)->PlayComboAttackMontage(ComboNum);
+	Cast<ABossAIController>(GetController())->CountAttack();
 	ComboNum++;
 	ComboNum %= 3;
 }

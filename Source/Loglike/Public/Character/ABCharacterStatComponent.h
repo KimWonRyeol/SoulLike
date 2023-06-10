@@ -26,7 +26,7 @@ public:
 	// Called every frame
 	//virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	//void SetNewLevel(int NewLevel);
-	void SetStartName(int32 NewName);
+	//void SetStartName(int32 NewName);
 	void SetMaxHealth(float NewMaxHealth);
 	void SetCurrentHealth(float NewCurrentHealth);
 	void SetAddHealth(float NewAddHealth);
@@ -36,20 +36,32 @@ public:
 	void SetAddLuck(float NewAddLuck);
 	void SetDefaultAttackSpeed(float NewDefaultAttackSpeed);
 	void SetAddAttackSpeed(float NewAddAttackSpeed);
-	void SetToken(int32 NewToken);
-
-	
+	void SetDefaultToken(int32 NewDefaultToken);
+	void SetAddToken(int32 NewAddToken);
+	void AddLuck_(int32 amount);
+	void AddDamage_(int32 amount);
+	void AddHP_(int32 amount);
+	void AddToken_(int32 NewAddToken);
+	void SetWeaponKey(bool _WeaponKey);
+	void SetArtifactKey(bool _ArtifactKey);
+	bool GetWeaponKey();
+	bool GetArtifactKey();
 	float GetMaxHealth();
-	float GetHealth();
 	float GetCurrentHealth();
 	float GetDefaultDamage();
-	float GetDamage();
 	float GetDefaultLuck();
-	float GetLuck();
 	float GetDefaultAttackSpeed();
-	float GetAttackSpeed();
 	int32 GetToken();
-
+	void SetWeaponKeyRemain(int32 WeaponKeyRemain_);
+	void SetArtifactKeyRemain(int32 ArtifactKeyRemain_);
+	void SetHpStatRemain(int32 HpStatRemain_);
+	void SetDamageStatRemain(int32 DamageStatRemain_);
+	void SetLuckStatRemain(int32 LuckStatRemain_);
+	int32 GetWeaponKeyRemain();
+	int32 GetArtifactKeyRemain();
+	int32 GetHpStatRemain();
+	int32 GetDamageStatRemain();
+	int32 GetLuckStatRemain();
 	FOnHPIsZeroDelegate OnHPIsZero;
 		
 private:
@@ -71,21 +83,38 @@ private:
 	float DefaultDamage;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
-	float AddDamage;
+	float AddDamage; //삭제할지도...
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
 	float DefaultLuck;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
-	float AddLuck;
+	float AddLuck; //삭제할지도...
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
 	float DefaultAttackSpeed;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
-	float AddAttackSpeed;
+	float AddAttackSpeed; //삭제할지도...
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
 	int32 Token;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		bool ArtifactKey;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		bool WeaponKey;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		int32 WeaponKeyRemain;
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		int32 ArtifactKeyRemain;
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		int32 HpStatRemain;
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		int32 DamageStatRemain;
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = true))
+		int32 LuckStatRemain;
 
 };

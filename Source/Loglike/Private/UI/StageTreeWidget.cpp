@@ -1,7 +1,20 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+
 #include "UI/StageTreeWidget.h"
 #include "UI/StageNodeWidget.h"
+
+#include "Character/LoglikeCharacter.h"
+#include "Character/ABCharacterStatComponent.h"
+
 #include "GameFramework/LoglikeGameInstance.h"
+#include "DungeonGameMode.h"
+
+
+#include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
+
 
 UStageTreeWidget::UStageTreeWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -34,11 +47,13 @@ UStageTreeWidget::UStageTreeWidget(const FObjectInitializer& ObjectInitializer) 
 	TreeConnection.Emplace(15, 16);
 
 	NodeNum = 17;
+	IsSelect = false;
 }
 
 void UStageTreeWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	//GetNodes
 	for (int i = 0; i < NodeNum; i++)
 	{
 		FString NodeName = FString::Printf(TEXT("StageNode%d"), i);
@@ -47,17 +62,22 @@ void UStageTreeWidget::NativeConstruct()
 		{
 			StageTree.Add(Node);
 			NodeNumMap.Add(Node, i);
-			//Node->SetNodeState(1);
 			Node->ParentWidget = this;
 		}
 	}
 
+	//Set Connection info
 	for (auto tuple : TreeConnection)
 	{
 		StageTree[tuple.Key]->NextStageNodes.Add(tuple.Value);
 	}
+	
+	//Show Nodes
 	UpdateTree();
 	
+	//Back Btn
+	BackButton = Cast<UButton>(GetWidgetFromName(TEXT("BackBtn")));
+	BackButton->OnClicked.AddDynamic(this, &UStageTreeWidget::RemoveStageTreeWidget);
 }
 
 void UStageTreeWidget::UpdateTree()
@@ -68,9 +88,9 @@ void UStageTreeWidget::UpdateTree()
 	{
 		StageNode->SetNodeState(EStageNodeState::E_Disable);
 	}
-	for (auto SelectNode : SelectedArr)
+	for (auto SelectNodeNum : SelectedArr)
 	{
-		StageTree[SelectNode]->SetNodeState(EStageNodeState::E_Select);
+		StageTree[SelectNodeNum]->SetNodeState(EStageNodeState::E_Select);
 	}
 	if (SelectedArr.Num() == 0)
 	{
@@ -89,15 +109,43 @@ void UStageTreeWidget::UpdateTree()
 
 void UStageTreeWidget::SelectNode(UStageNodeWidget* NodeWidget)
 {
-	int32 Num = (int32)NodeNumMap[NodeWidget];
+	if(IsSelect) return;
+	IsSelect = true;
+	ULoglikeGameInstance* GameInstance = Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+	ALoglikeCharacter* PlayerCharacter = Cast<ALoglikeCharacter>(UGameplayStatics::GetPlayerPawn(this,0));
 	
-	Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->AddSelectedNode(Num);	//Add Node
-	Cast<ULoglikeGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()))->CurrentStageType = NodeWidget->NodeStateType;
-	TransformStage(NodeWidget->NodeStateType == EStageType::E_Boss);	//Transform Stage
+	
+	if (GameInstance->CurrentStageType != EStageType::E_None) //Normal Stage -> Token 1~4
+	{
+		int32 RandomToken = FMath::RandRange(1, 3);
+		GameInstance->SetAddToken(RandomToken);
+		GameInstance->SetTotalAddToken(GameInstance->GetAddToken());
+		PlayerCharacter->CharacterToken = PlayerCharacter->CharacterStat->GetToken() + GameInstance->GetAddToken();
+		PlayerCharacter->SaveCharacter();
 
-	TransformStage();	//Transform Stage
-	//TreeLoad.AddUnique(Num);
+		//Clear Array
+		TPair<int32, int32> ClearPair;
+		ClearPair.Key = (int32)GameInstance->CurrentStageType;
+		ClearPair.Value = RandomToken;
+		GameInstance->ClearStageArray.Add(ClearPair);
+	}
 
+	//Sound
+	//USoundBase* MySound = LoadObject<USoundBase>(nullptr, TEXT("/Script/Engine.SoundWave'/Game/RPG_Skill_SFX/Wav/Additional_SFX/UI_Confirm_02_Impact_Heavy_Wooden_Metal_01.UI_Confirm_02_Impact_Heavy_Wooden_Metal_01'"));
+	if (MySound)
+	{
+		//UUserWidget::PlaySound(MySound);
+		UUserWidget::PlaySound(MySound);
+	}
+	
+	//SelectNode
+	int32 Num = (int32)NodeNumMap[NodeWidget];
+	GameInstance->AddSelectedNode(Num);	//Add Node
+	GameInstance->CurrentStageType = NodeWidget->NodeStateType;
+
+	//Transform Stage
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("%d"), (int8)(GameInstance->CurrentStageType)));
+	TransformStage(GameInstance->CurrentStageType == EStageType::E_Boss);
 }
 
 
@@ -105,33 +153,48 @@ void UStageTreeWidget::FadeAnimationPlay(bool IsIn)
 {
 	if (IsIn)
 	{
-		SetVisibility(ESlateVisibility::Visible);
-		PlayAnimation(Fade);
+		PlayAnimation(FadeIn);
 	}
 	else
 	{
-		PlayAnimation(Fade, 0.f, 1, EUMGSequencePlayMode::Reverse);
+		PlayAnimation(FadeOut);
 	}
-		
 }
 
 void UStageTreeWidget::TransformStage(bool IsBossStage)
 {
+	
+	//Fade
+	Cast<ADungeonGameMode>(UGameplayStatics::GetGameMode(GetWorld()))->FadeIn();
+	FadeAnimationPlay(false);
+	
+	FTimerHandle fadeOutTimerHandle;
+	//Enter Boss Stage 
 	if (IsBossStage)
 	{
-		UGameplayStatics::OpenLevel(this, FName("Dungeon-Boss"));
+		GetWorld()->GetTimerManager().SetTimer(fadeOutTimerHandle, FTimerDelegate::CreateLambda([&]()
+			{
+				UGameplayStatics::OpenLevel(this, FName("Dungeon-Boss"));
+			}), 0.6f, false);
 		return;
 	}
-	int8 RandomStageNum = FMath::RandRange(1, 4);
-	FName DungeonName = FName(*FString::Printf(TEXT("Dungeon-%d"), RandomStageNum));
-	UGameplayStatics::OpenLevel(this, DungeonName);
-	
 
-void UStageTreeWidget::TransformStage()
+	//Enter Normally Stage
+	GetWorld()->GetTimerManager().SetTimer(fadeOutTimerHandle, FTimerDelegate::CreateLambda([&]()
+		{
+			int8 RandomStageNum = FMath::RandRange(1, 3);
+			FName DungeonName = FName(*FString::Printf(TEXT("Dungeon-%d"), RandomStageNum));
+			UGameplayStatics::OpenLevel(this, DungeonName);
+		}), 0.6f, false);
+}
+
+void UStageTreeWidget::RemoveStageTreeWidget()
 {
-	int8 RandomStageNum = FMath::RandRange(1, 4);
-	//FName DungeonName = FName(*FString::Printf(TEXT("Dungeon-%d"), RandomStageNum));
-	//UGameplayStatics::OpenLevel(this, DungeonName);
-	UGameplayStatics::OpenLevel(this, FName("MonsterTestLevel"));	//TestCode
-
+	FadeAnimationPlay(false);
+	FTimerHandle WidgetDeleteTimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(WidgetDeleteTimerHandle, FTimerDelegate::CreateLambda([&]()
+		{
+			Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())->DisableNextStageWidget();
+		}), 0.5f, false);
+	
 }

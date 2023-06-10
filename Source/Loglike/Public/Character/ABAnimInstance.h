@@ -29,7 +29,7 @@ public:
 	//닷지 몽타주 실행 함수
 	void PlayDodgeMontage();
 	//패링 몽타주 실행 함수
-	void PlayParryingMontage();
+	void PlayParryingMontage(float);
 	//공격 받는 몽타주 실행 함수
 	void PlayHitMontage();
 	//죽었을 때 애니메이션 실행 함수

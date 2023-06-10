@@ -31,7 +31,5 @@ public:
 	static const FName RangedAtkKey;
 	static const FName JumpAtkKey;
 
-
-private:
 	int AttackNum;
 };

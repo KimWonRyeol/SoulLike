@@ -40,6 +40,11 @@ EBTNodeResult::Type UBTTask_BossCharged::ExecuteTask(UBehaviorTreeComponent& Own
 		IsCharging = false;
 	});
 
+	auto BossAI = Cast<ABossAIController>(OwnerComp.GetAIOwner());
+
+	int32 AtkNum = BossAI->AttackNum;
+	BossAI->AttackNum = AtkNum++;
+
 	Boss->ReadyToSkill(false);
 	OwnerComp.GetBlackboardComponent()->SetValueAsBool(ABossAIController::ChargedAtkKey, false);
 	return EBTNodeResult::InProgress;

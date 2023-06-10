@@ -27,11 +27,11 @@ AZombie::AZombie()
 	//BoxComponent
 	LeftBox = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftFistBox"));
 	RightBox = CreateDefaultSubobject<UBoxComponent>(TEXT("RightFistBox"));
-	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
-	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
+	
 	LeftBox->SetCollisionProfileName(TEXT("OverlapAll"));
 	RightBox->SetCollisionProfileName(TEXT("OverlapAll"));
+
+
 	//init
 	HealthPoint = 10.f;
 	Damage = 5.f;
@@ -45,7 +45,11 @@ AZombie::AZombie()
 void AZombie::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	const FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
+	LeftBox->AttachToComponent(GetMesh(), AttachmentRules, "LeftFist");
+	RightBox->AttachToComponent(GetMesh(), AttachmentRules, "RightFist");
+
 	LeftBox->OnComponentBeginOverlap.AddDynamic(this, &AMonsterBase::OnOverlapBegin);
 	RightBox->OnComponentBeginOverlap.AddDynamic(this, &AMonsterBase::OnOverlapBegin);
 	AttackEnd();

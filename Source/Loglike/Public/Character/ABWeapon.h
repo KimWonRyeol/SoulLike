@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "UI/CPPSlot.h"
+#include "UI/Weapon.h"
 #include "ABWeapon.generated.h"
 
 UCLASS()
@@ -16,7 +18,10 @@ public:
 	AABWeapon();
 
 	UPROPERTY(VisibleAnywhere, Category = Weapon)
-	USkeletalMeshComponent* Weapon;
+	UStaticMeshComponent* Weapon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory Data")
+	FCPPSlot WeaponSlot;
 
 protected:
 	// Called when the game starts or when spawned
@@ -25,5 +30,6 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	void ChangeWeapon(FString NewWeapon);
 
 };

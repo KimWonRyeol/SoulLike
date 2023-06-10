@@ -17,9 +17,9 @@ class LOGLIKE_API UABCharacterWidget : public UUserWidget
 public:
 	//캐릭터와 연결할 함수
 	void BindCharacter(class ALoglikeCharacter* LoglikeCharacter);
-	//HP 위젯 업데이트 함수
-	void UpdateHPWidget();
-	//필요 없을지도...?
+
+	//캐릭터 피격 효과 패널 출력 함수
+	void PlayWidgetAnimationByName();
 
 
 protected:
@@ -35,6 +35,10 @@ public:
 	//HUD 상의 실제 행운 텍스트 블럭
 	UPROPERTY(EditAnywhere, meta = (BindWidget))
 	class UTextBlock* LuckText;
+
+	//HUD 피격 효과 출력
+	UPROPERTY(BlueprintReadOnly, Transient, meta = (BindWidgetAnim))
+	class UWidgetAnimation* Take_Damage_Red;
 
 
 private:

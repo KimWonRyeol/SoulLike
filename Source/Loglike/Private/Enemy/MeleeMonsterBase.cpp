@@ -6,6 +6,7 @@
 #include "Enemy/MeleeMonsterAIController.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/TextRenderComponent.h"
 
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -15,12 +16,22 @@ AMeleeMonsterBase::AMeleeMonsterBase()
 	PrimaryActorTick.bCanEverTick = true;
 	ComboNum = 0;
 	IsAttacking = false;
+
+	TextRenderComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("TextRenderComponent"));
+	TextRenderComponent->SetupAttachment(RootComponent);
+	TextRenderComponent->Text = FText::FromString("!");
+	TextRenderComponent->SetTextRenderColor(FColor(255, 0, 0));
+	TextRenderComponent->SetRelativeScale3D(FVector(2.f, 2.f, 2.f));
+	FVector TextPos = FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	TextRenderComponent->SetRelativeLocation(TextPos);
+	
 }
 
 void AMeleeMonsterBase::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	MonsterAnim->OnMontageEnded.AddDynamic(this, &AMeleeMonsterBase::OnMontageEnded);
+	TextRenderComponent->SetVisibility(false);
 }
 void  AMeleeMonsterBase::Tick(float DeltaTime)
 {
@@ -37,49 +48,15 @@ void AMeleeMonsterBase::ComboAttack()
 void AMeleeMonsterBase::PushBack(AActor* PivotActor)
 {
 	FVector DamageDirection = PivotActor->GetActorLocation() - GetActorLocation();
-	DamageDirection.Normalize();
 	DamageDirection.Z = 0.f;
+	DamageDirection.Normalize();
 	DamageDirection *= -1;
 
-	FHitResult HitResult;
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(this);
-
-	float PushBackSize = 100.f;
-
-	FVector StartLoc = GetActorLocation() + DamageDirection * 50.f;
-	FVector EndLoc = StartLoc + DamageDirection * PushBackSize;
-	FVector KnockbackPos = EndLoc;
-	bool IsExist = UKismetSystemLibrary::SphereTraceSingle(
-		GetWorld(),
-		StartLoc,
-		EndLoc,
-		50.f,
-		UEngineTypes::ConvertToTraceType(ECC_Visibility),
-		false,
-		ActorsToIgnore,
-		EDrawDebugTrace::ForDuration,
-		HitResult,
-		true
-		, FLinearColor::Red
-		, FLinearColor::Green
-		, 3.0f
-	);
-
-	if (IsExist)
-	{
-		KnockbackPos = HitResult.ImpactPoint;
-		KnockbackPos.Z = StartLoc.Z;
-		FVector ErrorDistance = GetActorLocation() - KnockbackPos;
-		ErrorDistance.Normalize();
-		KnockbackPos += ErrorDistance * 25.f;
-	}
-	FLatentActionInfo Info;
-	Info.CallbackTarget = this;
-	UKismetSystemLibrary::MoveComponentTo(GetCapsuleComponent(), KnockbackPos, GetActorRotation(), false, false, 0.5f, false, EMoveComponentAction::Type::Move, Info);
+	LaunchCharacter(DamageDirection * 1200.f, true, true);
 }
 void AMeleeMonsterBase::Stun()
 {
+	TextRenderComponent->SetVisibility(true);
 	PushBack(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
 	Cast<AMeleeMonsterAIController>(GetController())->SetStun(true, 10.f);
 	Cast<UMeleeAnimInstance>(MonsterAnim)->PlayStunMontage();
@@ -104,6 +81,7 @@ void AMeleeMonsterBase::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	}
 	else if (Montage->GetName().Contains("Stun"))
 	{
+		TextRenderComponent->SetVisibility(false);
 		Cast<AMeleeMonsterAIController>(GetController())->SetStun(false, 0.f);
 	}
 	AttackEnd();

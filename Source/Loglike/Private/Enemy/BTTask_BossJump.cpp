@@ -18,7 +18,6 @@ void UBTTask_BossJump::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMe
 	Super::TickTask(OwnerComp, NodeMemory, DeltaSeconds);
 	if (!IsJumping)
 	{
-		
 		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 	}
 
@@ -39,6 +38,11 @@ EBTNodeResult::Type UBTTask_BossJump::ExecuteTask(UBehaviorTreeComponent& OwnerC
 	Boss->JumpAttackIsEnded.AddLambda([this]() -> void {
 		IsJumping = false;
 	});
+
+	auto BossAI = Cast<ABossAIController>(OwnerComp.GetAIOwner());
+
+	int32 AtkNum = BossAI->AttackNum;
+	BossAI->AttackNum = AtkNum++;
 
 	Boss->ReadyToSkill(false);
 	OwnerComp.GetBlackboardComponent()->SetValueAsBool(ABossAIController::JumpAtkKey, false);

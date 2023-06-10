@@ -31,7 +31,7 @@ public:
 	FOnPlayerStateChangedDelegate OnPlayerStateChanged;
 
 private:
-	void SetCharacterLevel(int32 NewName);
+	//void SetCharacterLevel(int32 NewName);
 	struct FABCharacterData* CurrentStatData;
 
 protected:
